@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "0.1.0")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.0.0")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		// The current mod version. (Stored here as a variable so that I don't have to update it in as many places.)

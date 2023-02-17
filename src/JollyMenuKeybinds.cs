@@ -1,9 +1,6 @@
 ﻿using JollyCoop.JollyMenu;
 using Menu.Remix;
 using Menu.Remix.MixedUI;
-using Mono.Cecil.Cil;
-using MonoMod.Cil;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,8 +19,6 @@ namespace JollyRebind
 
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.ctor += JollyPlayerSelectorHK;
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.Update += JollyPlayerSelector_UpdateHK;
-			
-			IL.JollyCoop.JollyMenu.JollySetupDialog.Update += JollySetupDialog_UpdateHK_IL;
 		}
 
 		// When `JollySetupDialog` is first opened, call `InitBoundKey()` as it's needed for `OpKeyBinder` to function.
@@ -78,7 +73,24 @@ namespace JollyRebind
 				);
 				keyBinder.description = $"Click to change Player {index + 1}'s point button";
 
+				// Call `KeybindValueUpdated` when the value is updated.
+				// (This can't be done with a += due to an unfixable CS0229 error.
+				System.Reflection.EventInfo onValueUpdate = typeof(OpKeyBinder).GetEvent("OnValueUpdate");
+				onValueUpdate.AddEventHandler(keyBinder, new OnValueChangeHandler(KeybindValueUpdated));
+
 				keybindWrappers[index] = new UIelementWrapper(menu.tabWrapper, keyBinder);
+			}
+		}
+
+		// Called by the `OpKeyBinder.OnValueUpdate` event.
+		// This is used to block setting the button to 'none' when the escape key is pressed.
+		private static void KeybindValueUpdated(UIconfig config, string newValue, string oldValue)
+		{
+			// If the value been has changed to 'none'.
+			if (newValue != oldValue && newValue == OpKeyBinder.NONE)
+			{
+				// Set the value back to whatever it was previously.
+				config._value = oldValue;
 			}
 		}
 
@@ -87,56 +99,6 @@ namespace JollyRebind
 		{
 			orig(self);
 			keybindWrappers[self.index].ThisConfig.greyedOut = !self.Joined;
-		}
-
-
-		// IL edit of the `Update()` method, to prevent the escape key from closing the menu if the player is
-		// currently inputting a keybind. (Escape is also used to remove a keybind so it's pretty inconvenient)
-		//
-		// The original method is small enough that just rewriting it in a hook would be a lot simpler,
-		// Except as far as I know `base.Update()` can't be called in a hook.
-		private static void JollySetupDialog_UpdateHK_IL(ILContext il)
-		{
-			ILCursor cursor = new ILCursor(il);
-
-			// Go to the first `ldloc.0`. [ if (flag ]
-			if (!cursor.TryGotoNext(i => i.MatchLdloc(0)))
-			{
-				Debug.Log("(JollyRebind) IL edit failed!");
-				return;
-			}
-			// Move forwards two lines so that the following code gets inserted after the `flag` check. [ if(flag && newCode ]
-			cursor.Index += 2;
-
-			// Create a label to be placed later.
-			ILLabel label = il.DefineLabel();
-
-			// Load `this` onto the stack.
-			cursor.Emit(OpCodes.Ldarg_0);
-			// Call a delegate using `this` as `self`, and put the result on the stack.
-			cursor.EmitDelegate<Func<JollySetupDialog, bool>>(self =>
-			{
-				// If an object is currently selected, and that object is an `OpKeyBinder`.
-				if (self.selectedObject is UIelementWrapper wrapper && wrapper.ThisConfig is OpKeyBinder)
-				{
-					return true;
-				}
-				return false;
-			});
-			// If the result is `true`, skip closing the menu.
-			cursor.Emit(OpCodes.Brtrue_S, label);
-
-			// Go to the second `ldloc.0`. [ this.lastPauseButton = flag; ]
-			if (!cursor.TryGotoNext(i => i.MatchLdloc(0)))
-			{
-				Debug.Log("(JollyRebind) IL edit failed!");
-				return;
-			}
-
-			// Move back one line to `ldarg.0`.
-			cursor.Index--;
-			// Set the label's target to this instruction. (After the menu closing check.)
-			cursor.MarkLabel(label);
 		}
 
 
