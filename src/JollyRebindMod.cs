@@ -26,6 +26,7 @@ namespace JollyRebind
 			orig(self);
 			On.Player.JollyInputUpdate += Player_JollyInputUpdateHK;
 			JollyMenuKeybinds.SetupHooks();
+			JollyRebindConfig.SetupHooks();
 
 			MachineConnector.SetRegisteredOI(Info.Metadata.GUID, new JollyRebindConfig());
 		}

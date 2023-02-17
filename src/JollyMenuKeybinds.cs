@@ -72,11 +72,7 @@ namespace JollyRebind
 					false
 				);
 				keyBinder.description = $"Click to change Player {index + 1}'s point button";
-
-				// Call `KeybindValueUpdated` when the value is updated.
-				// (This can't be done with a += due to an unfixable CS0229 error.
-				System.Reflection.EventInfo onValueUpdate = typeof(OpKeyBinder).GetEvent("OnValueUpdate");
-				onValueUpdate.AddEventHandler(keyBinder, new OnValueChangeHandler(KeybindValueUpdated));
+				keyBinder.OnValueUpdate += KeybindValueUpdated;
 
 				keybindWrappers[index] = new UIelementWrapper(menu.tabWrapper, keyBinder);
 			}
