@@ -12,21 +12,18 @@ namespace JollyRebind
 		{
 			for (int i = 0; i < PlayerPointInputs.Length; i++)
 			{
-				PlayerPointInputs[i] = config.Bind($"pointInputP{i}", KeyCode.Space, new ConfigurableInfo("placeholder 1", tags: new string[]
-				{
-					"placeholder 2"
-				}));
+				PlayerPointInputs[i] = config.Bind($"pointInputP{i}", KeyCode.Space);
 			}
 		}
 
 
-		// Manually set the `type` of the mod button for this interface to `Inconfigurable`, and stop it from being opened.
+		// Hook and override these methods to manually stop this interface from being opened.
 		// This is needed because there aren't actually any configurable settings, and it'll be confusing to players.
 		// (I can't find a better way to do this unfortunately, so this will have to do.)
 		public static void SetupHooks()
 		{
 			On.Menu.Remix.MenuModList.ModButton.ctor += ModButtonHK;
-			On.Menu.Remix.MenuModList.ModButton.Signal += ModButton_SignalHK;
+			On.OptionInterface.HasConfigurables += OptionInterface_HasConfigurables;
 		}
 
 		private static void ModButtonHK(On.Menu.Remix.MenuModList.ModButton.orig_ctor orig, MenuModList.ModButton self, MenuModList list, int index)
@@ -39,15 +36,13 @@ namespace JollyRebind
 			}
 		}
 
-		private static void ModButton_SignalHK(On.Menu.Remix.MenuModList.ModButton.orig_Signal orig, MenuModList.ModButton self, Menu.Remix.MixedUI.UIfocusable _self)
+		private static bool OptionInterface_HasConfigurables(On.OptionInterface.orig_HasConfigurables orig, OptionInterface self)
 		{
-			if (self.itf.GetType() == typeof(JollyRebindConfig))
+			if (self.GetType() == typeof(JollyRebindConfig))
 			{
-				self._NotifyDisabled(self.Menu.Translate("This mod does not have any configurable settings."), false);
-				self.PlaySound(SoundID.MENU_Greyed_Out_Button_Clicked);
-				return;
+				return false;
 			}
-			orig(self, _self);
+			return orig(self);
 		}
 	}
 }
