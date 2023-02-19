@@ -12,7 +12,7 @@ namespace JollyRebind
 		{
 			for (int i = 0; i < PlayerPointInputs.Length; i++)
 			{
-				PlayerPointInputs[i] = config.Bind($"pointInputP{i}", KeyCode.Space);
+				PlayerPointInputs[i] = config.Bind($"PlayerPointInputP{i}", KeyCode.Space);
 			}
 		}
 

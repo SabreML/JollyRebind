@@ -47,6 +47,7 @@
     </Reference>
     <Reference Include="HOOKS-Assembly-CSharp">
       <HintPath>..\..\DLLs\HOOKS-Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\DLLs\UnityEngine.dll</HintPath>

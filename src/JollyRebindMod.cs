@@ -11,33 +11,41 @@ namespace JollyRebind
 	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.0.0")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
-		// The current mod version. (Stored here as a variable so that I don't have to update it in as many places.)
-		public static string Version;
-
 		public void OnEnable()
 		{
-			Version = Info.Metadata.Version.ToString();
-
 			On.RainWorld.OnModsInit += Init;
 		}
 
 		private void Init(On.RainWorld.orig_OnModsInit orig, RainWorld self)
 		{
 			orig(self);
-			On.Player.JollyInputUpdate += Player_JollyInputUpdateHK;
+			On.Player.JollyInputUpdate += JollyInputUpdateHK;
 			JollyMenuKeybinds.SetupHooks();
 			JollyRebindConfig.SetupHooks();
 
 			MachineConnector.SetRegisteredOI(Info.Metadata.GUID, new JollyRebindConfig());
 		}
 
-		private void Player_JollyInputUpdateHK(On.Player.orig_JollyInputUpdate orig, Player self)
+		private static void JollyInputUpdateHK(On.Player.orig_JollyInputUpdate orig, Player self)
 		{
-			orig(self); // TODO: Check if it still works when stunned
-			KeyCode keybind = JollyRebindConfig.PlayerPointInputs[self.playerState.playerNumber].Value;
-			if (keybind != KeyCode.Space) // If it's not just the default.
+			orig(self);
+
+			KeyCode playerKeybind = JollyRebindConfig.PlayerPointInputs[self.playerState.playerNumber].Value;
+			KeyCode defaultKeybind;
+
+			if (self.input[0].gamePad)
 			{
-				self.jollyButtonDown = Input.GetKey(keybind);
+				defaultKeybind = RWCustom.Custom.rainWorld.options.controls[self.playerState.playerNumber].GamePadMap;
+			}
+			else
+			{
+				defaultKeybind = RWCustom.Custom.rainWorld.options.controls[self.playerState.playerNumber].KeyboardMap;
+			}
+
+			// If the player has a custom keybind.
+			if (playerKeybind != defaultKeybind)
+			{
+				self.jollyButtonDown = Input.GetKey(playerKeybind);
 			}
 		}
 	}
