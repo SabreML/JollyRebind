@@ -1,4 +1,7 @@
 ﻿using Menu.Remix;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
+using System;
 using System.Reflection;
 using UnityEngine;
 
@@ -23,7 +26,7 @@ namespace JollyRebind
 		public static void SetupHooks()
 		{
 			On.Menu.Remix.MenuModList.ModButton.ctor += ModButtonHK;
-			On.OptionInterface.HasConfigurables += OptionInterface_HasConfigurables;
+			IL.Menu.Remix.MenuModList.ModButton.Signal += ModButton_SignalHK_IL;
 		}
 
 		private static void ModButtonHK(On.Menu.Remix.MenuModList.ModButton.orig_ctor orig, MenuModList.ModButton self, MenuModList list, int index)
@@ -31,18 +34,33 @@ namespace JollyRebind
 			orig(self, list, index);
 			if (self.itf.GetType() == typeof(JollyRebindConfig))
 			{
+				// `type` is a readonly field, so it can't be assigned to in a hook. (afaik)
 				FieldInfo typeField = typeof(MenuModList.ModButton).GetField("type", BindingFlags.Public | BindingFlags.Instance);
 				typeField.SetValue(self, MenuModList.ModButton.ItfType.Blank);
 			}
 		}
 
-		private static bool OptionInterface_HasConfigurables(On.OptionInterface.orig_HasConfigurables orig, OptionInterface self)
+		private static void ModButton_SignalHK_IL(ILContext il)
 		{
-			if (self.GetType() == typeof(JollyRebindConfig))
+			ILCursor cursor = new ILCursor(il);
+			ILLabel label = null;
+
+			// Move the cursor to the end of the `HasConfigurables()` check near the end of the method, and copy its label target.
+			if (!cursor.TryGotoNext(MoveType.After,
+				i => i.MatchCallvirt(typeof(OptionInterface).GetMethod("HasConfigurables", BindingFlags.NonPublic | BindingFlags.Instance)),
+				i => i.MatchBrfalse(out label)
+			))
 			{
-				return false;
+				Debug.Log("(JollyRebind) IL edit failed!");
+				return;
 			}
-			return orig(self);
+
+			// Load `this`.
+			cursor.Emit(OpCodes.Ldarg_0);
+			// Check the type of `this.itf`, using `this` as `self` in a delegate.
+			cursor.EmitDelegate<Func<MenuModList.ModButton, bool>>(self => self.itf.GetType() == typeof(JollyRebindConfig));
+			// If the delegate returned true, jump to the label.
+			cursor.Emit(OpCodes.Brtrue_S, label);
 		}
 	}
 }
