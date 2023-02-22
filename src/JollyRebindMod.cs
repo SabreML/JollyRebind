@@ -26,6 +26,7 @@ namespace JollyRebind
 			MachineConnector.SetRegisteredOI(Info.Metadata.GUID, new JollyRebindConfig());
 		}
 
+		// If the player has a custom keybind set (i.e, not the map key), this method sets `jollyButtonDown` to `true` depending on if the key is being held down.
 		private static void JollyInputUpdateHK(On.Player.orig_JollyInputUpdate orig, Player self)
 		{
 			orig(self);

@@ -20,9 +20,9 @@ namespace JollyRebind
 		}
 
 
-		// Hook and override these methods to manually stop this interface from being opened.
-		// This is needed because there aren't actually any configurable settings, and it'll be confusing to players.
-		// (I can't find a better way to do this unfortunately, so this will have to do.)
+		// Hook and override these methods to manually stop this interface being opened.
+		// This is needed because there aren't actually any configurable settings, and it'll be confusing to see a blank config page.
+		// (I can't find a better way to do this unfortunately, so this works for now.)
 		public static void SetupHooks()
 		{
 			On.Menu.Remix.MenuModList.ModButton.ctor += ModButtonHK;
@@ -34,7 +34,7 @@ namespace JollyRebind
 			orig(self, list, index);
 			if (self.itf.GetType() == typeof(JollyRebindConfig))
 			{
-				// `type` is a readonly field, so it can't be assigned to in a hook. (afaik)
+				// `type` is a readonly field, so it can't be assigned to in a hook. (as far as I'm aware anyway)
 				FieldInfo typeField = typeof(MenuModList.ModButton).GetField("type", BindingFlags.Public | BindingFlags.Instance);
 				typeField.SetValue(self, MenuModList.ModButton.ItfType.Blank);
 			}

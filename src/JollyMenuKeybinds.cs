@@ -1,13 +1,19 @@
 ﻿using JollyCoop.JollyMenu;
 using Menu.Remix;
 using Menu.Remix.MixedUI;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace JollyRebind
 {
 	public static class JollyMenuKeybinds
 	{
+		public static bool MenuReady = false;
+
 		private static readonly UIelementWrapper[] keybindWrappers = new UIelementWrapper[4];
 
 		public static void SetupHooks()
@@ -19,6 +25,11 @@ namespace JollyRebind
 
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.ctor += JollyPlayerSelectorHK;
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.Update += JollyPlayerSelector_UpdateHK;
+
+			new ILHook(
+				typeof(OpKeyBinder).GetProperty("value", BindingFlags.Public | BindingFlags.Instance).GetSetMethod(),
+				new ILContext.Manipulator(OpKeyBinder_set_value)
+			);
 		}
 
 		// When `JollySetupDialog` is first opened, call `InitBoundKey()` as it's needed for `OpKeyBinder` to function.
@@ -26,6 +37,7 @@ namespace JollyRebind
 		{
 			InitBoundKey();
 			orig(self, name, manager, closeButtonPos);
+			MenuReady = true;
 		}
 
 		// When the menu is unloaded, save all of the keybinds and empty the array.
@@ -40,6 +52,7 @@ namespace JollyRebind
 					keybindWrappers[i] = null;
 				}
 			}
+			MenuReady = false;
 		}
 
 
@@ -95,6 +108,36 @@ namespace JollyRebind
 		{
 			orig(self);
 			keybindWrappers[self.index].ThisConfig.greyedOut = !self.Joined;
+		}
+
+		// Adds a check to the setter of `OpKeyBinder.value` to stop it from playing a sound before the menu is fully loaded.
+		// This is needed because otherwise all four keybind buttons will try to play a sound at the same time when the menu opens, resulting in a loud noise.
+		private static void OpKeyBinder_set_value(ILContext il)
+		{
+			ILCursor cursor = new ILCursor(il);
+
+			// Try to move the cursor to the instruction after the sound is played.
+			if (!cursor.TryGotoNext(MoveType.After,
+				i => i.MatchLdsfld<SoundID>("MENU_Button_Successfully_Assigned"),
+				i => i.MatchCallvirt<Menu.Menu>("PlaySound")
+			))
+			{
+				Debug.Log("(JollyRebind) IL edit failed!");
+				return;
+			}
+
+			// Set this instruction as a label target.
+			ILLabel label = cursor.MarkLabel();
+
+			// Move back 4 lines to the instruction before the sound is played.
+			cursor.Index -= 4;
+
+			// Load the `MenuReady` bool onto the stack.
+			cursor.Emit(OpCodes.Ldsfld, typeof(JollyMenuKeybinds).GetField("MenuReady", BindingFlags.Public | BindingFlags.Static));
+			// If it's false, jump to `label`'s target instuction. (After the sound is played)
+			cursor.Emit(OpCodes.Brfalse_S, label);
+
+			// (Otherwise if the menu is open, do everything normally.)
 		}
 
 
