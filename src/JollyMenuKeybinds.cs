@@ -25,6 +25,7 @@ namespace JollyRebind
 
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.ctor += JollyPlayerSelectorHK;
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.Update += JollyPlayerSelector_UpdateHK;
+			On.JollyCoop.JollyMenu.JollyPlayerSelector.AddColorButton += JollyPlayerSelector_AddColorButtonHK;
 
 			new ILHook(
 				typeof(OpKeyBinder).GetProperty("value", BindingFlags.Public | BindingFlags.Instance).GetSetMethod(),
@@ -109,6 +110,14 @@ namespace JollyRebind
 			orig(self);
 			keybindWrappers[self.index].ThisConfig.greyedOut = !self.Joined;
 		}
+
+		private static void JollyPlayerSelector_AddColorButtonHK(On.JollyCoop.JollyMenu.JollyPlayerSelector.orig_AddColorButton orig, JollyPlayerSelector self)
+		{
+			orig(self);
+			self.colorConfig.pos.y -= keybindWrappers[self.index].thisElement.size.y;
+			self.colorConfig.lastPos.y -= keybindWrappers[self.index].thisElement.size.y;
+		}
+
 
 		// Adds a check to the setter of `OpKeyBinder.value` to stop it from playing a sound before the menu is fully loaded.
 		// This is needed because otherwise all four keybind buttons will try to play a sound at the same time when the menu opens, resulting in a loud noise.

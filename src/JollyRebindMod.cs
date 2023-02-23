@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.0.0")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.0.1")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		public void OnEnable()
