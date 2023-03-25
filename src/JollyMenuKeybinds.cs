@@ -4,6 +4,7 @@ using Menu.Remix.MixedUI;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
+using Rewired;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -89,6 +90,7 @@ namespace JollyRebind
 				keyBinder.OnValueUpdate += KeybindValueUpdated;
 
 				keybindWrappers[index] = new UIelementWrapper(menu.tabWrapper, keyBinder);
+				Debug.Log($"(JollyRebind) Keybind UI added for player {index + 1}");
 			}
 		}
 
@@ -157,30 +159,27 @@ namespace JollyRebind
 			for (int i = 0; i < RWCustom.Custom.rainWorld.options.controls.Length; i++)
 			{
 				Options.ControlSetup controlSetup = RWCustom.Custom.rainWorld.options.controls[i];
-				if (controlSetup.preset == Options.ControlSetup.Preset.KeyboardSinglePlayer)
+				InputMapCategory mapCategory = ReInput.mapping.GetMapCategory(0);
+				if (mapCategory == null || controlSetup?.gameControlMap == null)
 				{
-					for (int j = 0; j < controlSetup.keyboardKeys.Length; j++)
-					{
-						if (!OpKeyBinder._BoundKey.ContainsValue(controlSetup.keyboardKeys[j].ToString()))
-						{
-							OpKeyBinder._BoundKey.Add($"Vanilla_{i}_{j}", controlSetup.keyboardKeys[j].ToString());
-						}
-					}
+					continue;
 				}
-				else
+				InputCategory actionCategory = ReInput.mapping.GetActionCategory(mapCategory.name);
+				if (actionCategory == null)
 				{
-					for (int j = 0; j < controlSetup.gamePadButtons.Length; j++)
+					continue;
+				}
+				int num = 0;
+				foreach (InputAction action in ReInput.mapping.ActionsInCategory(actionCategory.id))
+				{
+					foreach (ActionElementMap elementMap in controlSetup.gameControlMap.AllMaps)
 					{
-						string button = controlSetup.gamePadButtons[j].ToString();
-						if (button.Length <= 9 || !int.TryParse(button.Substring(8, 1), out _))
+						if (elementMap != null && elementMap.actionId == action.id && !OpKeyBinder._BoundKey.ContainsValue(elementMap.elementIdentifierName))
 						{
-							button = button.Substring(0, 8) + i + button.Substring(8);
-						}
-						if (!OpKeyBinder._BoundKey.ContainsValue(button))
-						{
-							OpKeyBinder._BoundKey.Add($"Vanilla_{i}_{j}", button);
+							OpKeyBinder._BoundKey[$"Vanilla_{i}_{num}"] = elementMap.elementIdentifierName;
 						}
 					}
+					num++;
 				}
 			}
 		}

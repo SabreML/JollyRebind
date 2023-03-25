@@ -61,6 +61,10 @@
       <HintPath>..\..\DLLs\Additional\MonoMod.Utils.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Rewired_Core">
+      <HintPath>..\..\DLLs\Additional\Rewired_Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\DLLs\UnityEngine.dll</HintPath>
       <Private>False</Private>
