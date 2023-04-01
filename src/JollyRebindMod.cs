@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.1.1")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.1.2")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		// A `HashSet` of previously logged controller element exceptions.
@@ -77,13 +77,14 @@ namespace JollyRebind
 				// Otherwise, make an exception log with the name and ID of the button the player is trying to use.
 				else
 				{
-					string exceptionString = $"(JollyRebind) Unknown controller element '{mapKeyElementMap.elementIdentifierName} ({mapKeyElementMap.elementIdentifierId})'!";
+					string exceptionString = $"(JollyRebind) Unknown controller element '{mapKeyElementMap.elementIdentifierName} ({mapKeyElementMap.elementIdentifierId})'! Defaulting to the map key.";
 
 					// If this exceptionString hasn't been logged already.
 					if (exceptionLogLog.Add(exceptionString))
 					{
 						Debug.LogException(new System.Exception(exceptionString));
 					}
+					return;
 				}
 			}
 			// If the player is using a keyboard.
