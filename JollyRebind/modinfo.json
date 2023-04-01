@@ -1,7 +1,7 @@
 {
 	"id": "sabreml.jollyrebind",
 	"name": "Jolly Rebind",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"target_game_version": "v1.9.07b",
 	"authors": "SabreML",
 	"description": "Adds a customisable input to change the Jolly Co-op pointing button.",

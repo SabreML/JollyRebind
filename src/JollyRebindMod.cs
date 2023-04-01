@@ -1,6 +1,7 @@
 ﻿using BepInEx;
 using Rewired;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Permissions;
 using UnityEngine;
 
@@ -10,9 +11,13 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.1.0")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.1.1")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
+		// A `HashSet` of previously logged controller element exceptions.
+		// These are tracked because `JollyInputUpdate` happens once every frame, and this could very quickly spam the log file otherwise.
+		private static readonly HashSet<string> exceptionLogLog = new HashSet<string>();
+
 		// A dictionary of rewired `elementIdentifierName`s to their corresponding Unity `KeyCode`s.
 		private static readonly Dictionary<string, KeyCode> rewiredElemToKeyCode = new Dictionary<string, KeyCode>
 		{
@@ -25,7 +30,7 @@ namespace JollyRebind
 			{ "Back",				KeyCode.JoystickButton6 },
 			{ "Start",				KeyCode.JoystickButton7 },
 			{ "Left Stick Button",	KeyCode.JoystickButton8 },
-			{ "Right Stick Button", KeyCode.JoystickButton9 }
+			{ "Right Stick Button",	KeyCode.JoystickButton9 }
 		};
 
 		public void OnEnable()
@@ -53,28 +58,38 @@ namespace JollyRebind
 			// The game's map keybind.
 			KeyCode? mapKeybind = null;
 
+			// The player's `Options.ControlSetup`, containing their Rewired data.
+			Options.ControlSetup playerControls = RWCustom.Custom.rainWorld.options.controls[self.playerState.playerNumber];
+
 			// If the player is using a controller.
 			if (self.input[0].gamePad)
 			{
-				Options.ControlSetup controlSetup = RWCustom.Custom.rainWorld.options.controls[self.playerState.playerNumber];
+				// Get the button on the controller which is bound to the 'Map' action.
+				ActionElementMap mapKeyElementMap = playerControls.gameControlMap.ButtonMaps
+					.First(elementMap => elementMap.actionId == RewiredConsts.Action.Map);
 
-				// Loop through every button on the controller which is currently bound to something in the game.
-				// (I feel like there must be a method for this somewhere)
-				foreach (ActionElementMap elementMap in controlSetup.gameControlMap.ButtonMaps)
+				// If that button's name is in the `rewiredElemToKeyCode` dictionary, 
+				if (rewiredElemToKeyCode.TryGetValue(mapKeyElementMap.elementIdentifierName, out KeyCode keyCode))
 				{
-					// If the button is bound to the 'Map' action (11).
-					if (elementMap.actionId == RewiredConsts.Action.Map)
+					// Set `mapKeybind` to the Rewired element's corresponding Unity `KeyCode`.
+					mapKeybind = keyCode;
+				}
+				// Otherwise, make an exception log with the name and ID of the button the player is trying to use.
+				else
+				{
+					string exceptionString = $"(JollyRebind) Unknown controller element '{mapKeyElementMap.elementIdentifierName} ({mapKeyElementMap.elementIdentifierId})'!";
+
+					// If this exceptionString hasn't been logged already.
+					if (exceptionLogLog.Add(exceptionString))
 					{
-						// That's the one we're looking for.
-						mapKeybind = rewiredElemToKeyCode[elementMap.elementIdentifierName];
-						break;
+						Debug.LogException(new System.Exception(exceptionString));
 					}
 				}
 			}
 			// If the player is using a keyboard.
 			else
 			{
-				mapKeybind = RWCustom.Custom.rainWorld.options.controls[self.playerState.playerNumber].KeyboardMap;
+				mapKeybind = playerControls.KeyboardMap;
 			}
 
 			// If the player's keybind is different to the game's map key.

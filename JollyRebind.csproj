@@ -15,7 +15,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -80,6 +80,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /Y "$(TargetPath)" "$(RainWorldSteam)\RainWorld_Data\StreamingAssets\mods\$(ProjectName)\plugins"</PostBuildEvent>
+    <PostBuildEvent>copy /Y "$(TargetPath)" "$(RainWorldSteam)\RainWorld_Data\StreamingAssets\mods\$(ProjectName)\plugins"
+
+copy /Y "$(ProjectDir)\$(TargetName)\modinfo.json" "$(RainWorldSteam)\RainWorld_Data\StreamingAssets\mods\$(ProjectName)"</PostBuildEvent>
   </PropertyGroup>
 </Project>
