@@ -35,6 +35,7 @@ namespace JollyRebind
 			if (self.itf.GetType() == typeof(JollyRebindConfig))
 			{
 				// `type` is a readonly field, so it can't be assigned to in a hook. (as far as I'm aware anyway)
+				// This is just equivalent to `self.type = MenuModList.ModButton.ItfType.Blank`.
 				FieldInfo typeField = typeof(MenuModList.ModButton).GetField("type", BindingFlags.Public | BindingFlags.Instance);
 				typeField.SetValue(self, MenuModList.ModButton.ItfType.Blank);
 			}

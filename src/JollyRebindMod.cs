@@ -11,27 +11,12 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.1.2")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.0")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		// A `HashSet` of previously logged controller element exceptions.
 		// These are tracked because `JollyInputUpdate` happens once every frame, and this could very quickly spam the log file otherwise.
 		private static readonly HashSet<string> exceptionLogLog = new HashSet<string>();
-
-		// A dictionary of rewired `elementIdentifierName`s to their corresponding Unity `KeyCode`s.
-		private static readonly Dictionary<string, KeyCode> rewiredElemToKeyCode = new Dictionary<string, KeyCode>
-		{
-			{ "A",					KeyCode.JoystickButton0 },
-			{ "B",					KeyCode.JoystickButton1 },
-			{ "X",					KeyCode.JoystickButton2 },
-			{ "Y",					KeyCode.JoystickButton3 },
-			{ "Left Shoulder",		KeyCode.JoystickButton4 },
-			{ "Right Shoulder",		KeyCode.JoystickButton5 },
-			{ "Back",				KeyCode.JoystickButton6 },
-			{ "Start",				KeyCode.JoystickButton7 },
-			{ "Left Stick Button",	KeyCode.JoystickButton8 },
-			{ "Right Stick Button",	KeyCode.JoystickButton9 }
-		};
 
 		public void OnEnable()
 		{
@@ -48,57 +33,132 @@ namespace JollyRebind
 			MachineConnector.SetRegisteredOI(Info.Metadata.GUID, new JollyRebindConfig());
 		}
 
-		// If the player has a custom keybind set (i.e, not the map key), this method sets `jollyButtonDown` to `true` depending on if the key is being held down.
+		// If the player has a custom keybind set (AKA: Not the map key), this method sets `jollyButtonDown` to true if the key is being held down.
 		private void JollyInputUpdateHK(On.Player.orig_JollyInputUpdate orig, Player self)
 		{
 			orig(self);
 
-			// The player's pointing keybind from the jolly menu keybinder.
+			// The player's custom pointing keybind from the jolly menu keybinder.
 			KeyCode playerKeybind = JollyRebindConfig.PlayerPointInputs[self.playerState.playerNumber].Value;
-			// The game's map keybind.
-			KeyCode? mapKeybind = null;
 
-			// The player's `Options.ControlSetup`, containing their Rewired data.
-			Options.ControlSetup playerControls = RWCustom.Custom.rainWorld.options.controls[self.playerState.playerNumber];
-
-			// If the player is using a controller.
-			if (self.input[0].gamePad)
-			{
-				// Get the button on the controller which is bound to the 'Map' action.
-				ActionElementMap mapKeyElementMap = playerControls.gameControlMap.ButtonMaps
-					.First(elementMap => elementMap.actionId == RewiredConsts.Action.Map);
-
-				// If that button's name is in the `rewiredElemToKeyCode` dictionary, 
-				if (rewiredElemToKeyCode.TryGetValue(mapKeyElementMap.elementIdentifierName, out KeyCode keyCode))
-				{
-					// Set `mapKeybind` to the Rewired element's corresponding Unity `KeyCode`.
-					mapKeybind = keyCode;
-				}
-				// Otherwise, make an exception log with the name and ID of the button the player is trying to use.
-				else
-				{
-					string exceptionString = $"(JollyRebind) Unknown controller element '{mapKeyElementMap.elementIdentifierName} ({mapKeyElementMap.elementIdentifierId})'! Defaulting to the map key.";
-
-					// If this exceptionString hasn't been logged already.
-					if (exceptionLogLog.Add(exceptionString))
-					{
-						Debug.LogException(new System.Exception(exceptionString));
-					}
-					return;
-				}
-			}
-			// If the player is using a keyboard.
-			else
-			{
-				mapKeybind = playerControls.KeyboardMap;
-			}
-
-			// If the player's keybind is different to the game's map key.
-			if (playerKeybind != mapKeybind)
+			// If the player's pointing keybind is different to their map key.
+			if (playerKeybind != GetMapKey(self.playerState.playerNumber))
 			{
 				// Override whatever `jollyButtonDown` was set to in `orig()`.
 				self.jollyButtonDown = Input.GetKey(playerKeybind);
 			}
 		}
+
+		// Returns `playerNumber`'s map key from the game's settings as a `KeyCode`.
+		private static KeyCode GetMapKey(int playerNumber)
+		{
+			Options.ControlSetup playerControls = RWCustom.Custom.rainWorld.options.controls[playerNumber];
+
+			// If the player is using a controller.
+			if (playerControls.gamePad)
+			{
+				// The button on the controller which is bound to the 'Map' action.
+				ActionElementMap mapKeyElementMap = playerControls.gameControlMap.ButtonMaps
+					.First(elementMap => elementMap.actionId == RewiredConsts.Action.Map);
+
+				// If that button's name is in the `rewiredNameToKeyCode` dictionary for the controller.
+				try
+				{
+					return rewiredNameToKeyCode[playerControls.GetActivePreset()][mapKeyElementMap.elementIdentifierName];
+				}
+				catch (KeyNotFoundException)
+				{
+					// If it's /not/ in the dictionary, make an exception log with the name and ID of the button the player is trying to use.
+					string exceptionString = string.Format(
+						"(JollyRebind) Unknown map button element '{0} ({1})'! [GUID: {2}]",
+						mapKeyElementMap.elementIdentifierName,
+						mapKeyElementMap.elementIdentifierId,
+						mapKeyElementMap.controllerMap.hardwareGuid
+					);
+					LogExceptionOnce(exceptionString);
+
+					// Return `KeyCode.None` so that it defaults to using their map key.
+					// (Their keybind isn't going to be 'None', so `jollyButtonDown` won't be overridden by it)
+					return KeyCode.None;
+				}
+			}
+			// If the player is using a keyboard.
+			else
+			{
+				return playerControls.KeyboardMap;
+			}
+		}
+
+		// Sends an exception to `exceptionLog.txt` as long has it hasn't already been logged before in this session.
+		private static void LogExceptionOnce(string text)
+		{
+			// If this exceptionString hasn't been logged already.
+			if (exceptionLogLog.Add(text))
+			{
+				Debug.LogException(new System.Exception(text));
+			}
+		}
+
+
+		// A 2D dictionary containing Rewired `elementIdentifierName`s to their corresponding Unity `KeyCode`s,
+		// categorised by the controller preset they belong to.
+		// (Button names taken from the Rewired 'RewiredControllerElementIdentifiers.csv' file from the Rewired documentation)
+		private static readonly Dictionary<Options.ControlSetup.Preset, Dictionary<string, KeyCode>> rewiredNameToKeyCode =
+			new Dictionary<Options.ControlSetup.Preset, Dictionary<string, KeyCode>>
+		{
+			[Options.ControlSetup.Preset.PS4DualShock] = new Dictionary<string, KeyCode>
+			{
+				{ "Cross",				KeyCode.JoystickButton0 },
+				{ "Circle",				KeyCode.JoystickButton1 },
+				{ "Square",				KeyCode.JoystickButton2 },
+				{ "Triangle",			KeyCode.JoystickButton3 },
+				{ "L1",					KeyCode.JoystickButton4 },
+				{ "R1",					KeyCode.JoystickButton5 },
+				{ "Share",				KeyCode.JoystickButton6 },
+				{ "Options",			KeyCode.JoystickButton7 },
+				{ "Left Stick Button",	KeyCode.JoystickButton8 },
+				{ "Right Stick Button",	KeyCode.JoystickButton9 }
+			},
+			[Options.ControlSetup.Preset.PS5DualSense] = new Dictionary<string, KeyCode>
+			{
+				{ "Cross",				KeyCode.JoystickButton0 },
+				{ "Circle",				KeyCode.JoystickButton1 },
+				{ "Square",				KeyCode.JoystickButton2 },
+				{ "Triangle",			KeyCode.JoystickButton3 },
+				{ "L1",					KeyCode.JoystickButton4 },
+				{ "R1",					KeyCode.JoystickButton5 },
+				{ "Create",				KeyCode.JoystickButton6 },
+				{ "Options",			KeyCode.JoystickButton7 },
+				{ "Left Stick Button",	KeyCode.JoystickButton8 },
+				{ "Right Stick Button",	KeyCode.JoystickButton9 }
+			},
+			[Options.ControlSetup.Preset.XBox] = new Dictionary<string, KeyCode>
+			{
+				{ "A",					KeyCode.JoystickButton0 },
+				{ "B",					KeyCode.JoystickButton1 },
+				{ "X",					KeyCode.JoystickButton2 },
+				{ "Y",					KeyCode.JoystickButton3 },
+				{ "Left Shoulder",		KeyCode.JoystickButton4 },
+				{ "Right Shoulder",		KeyCode.JoystickButton5 },
+				{ "Back",				KeyCode.JoystickButton6 },
+				{ "Start",				KeyCode.JoystickButton7 },
+				{ "Left Stick Button",	KeyCode.JoystickButton8 },
+				{ "Right Stick Button",	KeyCode.JoystickButton9 }
+			},
+			[Options.ControlSetup.Preset.SwitchProController] = new Dictionary<string, KeyCode>
+			{
+				{ "B",					KeyCode.JoystickButton0 },
+				{ "A",					KeyCode.JoystickButton1 },
+				{ "Y",					KeyCode.JoystickButton2 },
+				{ "X",					KeyCode.JoystickButton3 },
+				{ "L",					KeyCode.JoystickButton4 },
+				{ "R",					KeyCode.JoystickButton5 },
+				{ "- Button",			KeyCode.JoystickButton6 },
+				{ "+ Button",			KeyCode.JoystickButton7 },
+				{ "Left Stick",			KeyCode.JoystickButton8 },
+				{ "Right Stick",		KeyCode.JoystickButton9 }
+			}
+		};
+		// (Having all of these hardcoded in the mod is terrible, but this is genuinely the best way I've been able to find after over a week of testing.)
 	}
 }

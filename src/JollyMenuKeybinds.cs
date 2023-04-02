@@ -113,6 +113,7 @@ namespace JollyRebind
 			keybindWrappers[self.index].ThisConfig.greyedOut = !self.Joined;
 		}
 
+		// Move the custom colour buttons out of the way of the keybinders.
 		private static void JollyPlayerSelector_AddColorButtonHK(On.JollyCoop.JollyMenu.JollyPlayerSelector.orig_AddColorButton orig, JollyPlayerSelector self)
 		{
 			orig(self);
