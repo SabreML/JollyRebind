@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.0")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.1")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		// A `HashSet` of previously logged controller element exceptions.
@@ -58,7 +58,7 @@ namespace JollyRebind
 			if (playerControls.gamePad)
 			{
 				// The button on the controller which is bound to the 'Map' action.
-				ActionElementMap mapKeyElementMap = playerControls.gameControlMap.ButtonMaps
+				ActionElementMap mapKeyElementMap = playerControls.gameControlMap.AllMaps
 					.First(elementMap => elementMap.actionId == RewiredConsts.Action.Map);
 
 				// If that button's name is in the `rewiredNameToKeyCode` dictionary for the controller.
