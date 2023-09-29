@@ -11,26 +11,46 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.1")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.2")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
+		// The number of co-op players
+		public static int PlayerCount;
+
+
 		// A `HashSet` of previously logged controller element exceptions.
 		// These are tracked because `JollyInputUpdate` happens once every frame, and this could very quickly spam the log file otherwise.
 		private static readonly HashSet<string> exceptionLogLog = new HashSet<string>();
 
+
 		public void OnEnable()
 		{
 			On.RainWorld.OnModsInit += Init;
+			On.RainWorld.PostModsInit += PostInit;
 		}
 
 		private void Init(On.RainWorld.orig_OnModsInit orig, RainWorld self)
 		{
 			orig(self);
 			On.Player.JollyInputUpdate += JollyInputUpdateHK;
-			JollyMenuKeybinds.SetupHooks();
-			JollyRebindConfig.SetupHooks();
+			JollyMenuKeybinds.SetUpHooks();
+			JollyRebindConfig.SetUpHooks();
 
 			MachineConnector.SetRegisteredOI(Info.Metadata.GUID, new JollyRebindConfig());
+		}
+
+		// 'Myriad of Slugcats' compatibility.
+		private void PostInit(On.RainWorld.orig_PostModsInit orig, RainWorld self)
+		{
+			// Always 4 by default, but Myriad can increase it up to 16.
+			PlayerCount = RainWorld.PlayerObjectBodyColors.Length;
+			if (PlayerCount > 4)
+			{
+				JollyMenuKeybinds.KeybindWrappers = new Menu.Remix.UIelementWrapper[PlayerCount];
+				JollyRebindConfig.PlayerPointInputs = new Configurable<KeyCode>[PlayerCount];
+			}
+
+			JollyRebindConfig.CreateInputConfigs();
 		}
 
 		// If the player has a custom keybind set (AKA: Not the map key), this method sets `jollyButtonDown` to true if the key is being held down.
@@ -92,7 +112,7 @@ namespace JollyRebind
 		// Sends an exception to `exceptionLog.txt` as long has it hasn't already been logged before in this session.
 		private static void LogExceptionOnce(string text)
 		{
-			// If this exceptionString hasn't been logged already.
+			// If this exceptionString hasn't been logged already. (`HashSet`s only allow unique objects)
 			if (exceptionLogLog.Add(text))
 			{
 				Debug.LogException(new System.Exception(text));

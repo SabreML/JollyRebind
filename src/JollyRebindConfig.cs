@@ -9,13 +9,23 @@ namespace JollyRebind
 {
 	public class JollyRebindConfig : OptionInterface
 	{
-		public static readonly Configurable<KeyCode>[] PlayerPointInputs = new Configurable<KeyCode>[4];
+		public static Configurable<KeyCode>[] PlayerPointInputs = new Configurable<KeyCode>[4];
 
+		private static ConfigHolder configHolder;
+
+
+		// Cache `this.config` as a static variable so that I can be a bit lazy with it in `CreateInputConfigs()`.
 		public JollyRebindConfig()
+		{
+			configHolder = config;
+		}
+
+		// Bind each player's `Configurable<KeyCode>` to the `ConfigHolder`, with Spacebar as the default key.
+		public static void CreateInputConfigs()
 		{
 			for (int i = 0; i < PlayerPointInputs.Length; i++)
 			{
-				PlayerPointInputs[i] = config.Bind($"PlayerPointInputP{i}", KeyCode.Space);
+				PlayerPointInputs[i] = configHolder.Bind($"PlayerPointInputP{i}", KeyCode.Space);
 			}
 		}
 
@@ -23,7 +33,7 @@ namespace JollyRebind
 		// Hook and override these methods to manually stop this interface being opened.
 		// This is needed because there aren't actually any configurable settings, and it'll be confusing to see a blank config page.
 		// (I can't find a better way to do this unfortunately, so this works for now.)
-		public static void SetupHooks()
+		public static void SetUpHooks()
 		{
 			On.Menu.Remix.MenuModList.ModButton.ctor += ModButtonHK;
 			IL.Menu.Remix.MenuModList.ModButton.Signal += ModButton_SignalHK_IL;

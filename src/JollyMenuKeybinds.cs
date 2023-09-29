@@ -15,16 +15,14 @@ namespace JollyRebind
 	{
 		public static bool MenuReady = false;
 
-		private static readonly UIelementWrapper[] keybindWrappers = new UIelementWrapper[4];
+		public static UIelementWrapper[] KeybindWrappers = new UIelementWrapper[4];
 
-		public static void SetupHooks()
+
+		public static void SetUpHooks()
 		{
 			On.JollyCoop.JollyMenu.JollySetupDialog.ctor += JollySetupDialogHK;
 			On.JollyCoop.JollyMenu.JollySetupDialog.ShutDownProcess += JollySetupDialog_ShutDownProcessHK;
 
-			On.JollyCoop.JollyMenu.JollySlidingMenu.BindButtons += JollySlidingMenu_BindButtonsHK;
-
-			On.JollyCoop.JollyMenu.JollyPlayerSelector.ctor += JollyPlayerSelectorHK;
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.Update += JollyPlayerSelector_UpdateHK;
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.AddColorButton += JollyPlayerSelector_AddColorButtonHK;
 
@@ -39,6 +37,15 @@ namespace JollyRebind
 		{
 			InitBoundKey();
 			orig(self, name, manager, closeButtonPos);
+
+			CreateKeyBinders(self.slidingMenu);
+
+			// Skip this step if the player count is modified to avoid any mod compatibility issues.
+			if (KeybindWrappers.Length == 4)
+			{
+				FixSelectableOrder(self.slidingMenu);
+			}
+
 			MenuReady = true;
 		}
 
@@ -46,22 +53,53 @@ namespace JollyRebind
 		private static void JollySetupDialog_ShutDownProcessHK(On.JollyCoop.JollyMenu.JollySetupDialog.orig_ShutDownProcess orig, JollySetupDialog self)
 		{
 			orig(self);
-			for (int i = 0; i < keybindWrappers.Length; i++)
+			for (int i = 0; i < KeybindWrappers.Length; i++)
 			{
-				if (keybindWrappers[i] != null)
+				if (KeybindWrappers[i] != null)
 				{
-					keybindWrappers[i].SaveConfig();
-					keybindWrappers[i] = null;
+					KeybindWrappers[i].SaveConfig();
+					KeybindWrappers[i] = null;
 				}
 			}
 			MenuReady = false;
 		}
 
 
-		// Fix some errors introduced in moving around the menu with directional inputs, caused by adding new buttons.
-		private static void JollySlidingMenu_BindButtonsHK(On.JollyCoop.JollyMenu.JollySlidingMenu.orig_BindButtons orig, JollySlidingMenu self)
+		// Create and place a keybinding button for each `PlayerSelector`.
+		private static void CreateKeyBinders(JollySlidingMenu self)
 		{
-			orig(self);
+			for (int i = 0; i < self.playerSelector.Length; i++)
+			{
+				JollyPlayerSelector playerSelector = self.playerSelector[i];
+
+				if (KeybindWrappers[i] == null)
+				{
+					OpKeyBinder keyBinder = new OpKeyBinder(
+						JollyRebindConfig.PlayerPointInputs[i],
+						playerSelector.pos - new Vector2(10f, 73f),
+						new Vector2(120f, 35f),
+						false
+					);
+					keyBinder.description = $"Click to change Player {i + 1}'s point button";
+					keyBinder.OnValueUpdate += KeybindValueUpdated;
+
+					// If a mod (specifically 'Myriad of Slugcats') has increased the number of players above a certain amount, then the keybinders need to be smaller.
+					if (KeybindWrappers.Length >= 12)
+					{
+						keyBinder.size *= 0.56f;
+						keyBinder._label.scale *= 0.5f;
+						keyBinder._sprite.scale *= 0.5f;
+					}
+
+					KeybindWrappers[i] = new UIelementWrapper(self.menu.tabWrapper, keyBinder);
+					Debug.Log($"(JollyRebind) Keybind UI added for player {i + 1}");
+				}
+			}
+		}
+
+		// Fix some errors introduced in moving around the menu with directional inputs, caused by adding new buttons.
+		private static void FixSelectableOrder(JollySlidingMenu self)
+		{
 			// Pressing left with the leftmost class button selected selects the rightmost pup button.
 			self.playerSelector[0].classButton.nextSelectable[0] = self.playerSelector[self.playerSelector.Length - 1].pupButton;
 
@@ -69,29 +107,8 @@ namespace JollyRebind
 			self.playerSelector[self.playerSelector.Length - 1].pupButton.nextSelectable[2] = self.playerSelector[0].classButton;
 
 			// Same as above but with the keybind buttons.
-			keybindWrappers[0].nextSelectable[0] = keybindWrappers[keybindWrappers.Length - 1];
-			keybindWrappers[keybindWrappers.Length - 1].nextSelectable[2] = keybindWrappers[0];
-		}
-
-
-		// Create a keybind interface with each player selector.
-		private static void JollyPlayerSelectorHK(On.JollyCoop.JollyMenu.JollyPlayerSelector.orig_ctor orig, JollyPlayerSelector self, JollySetupDialog menu, Menu.MenuObject owner, Vector2 pos, int index)
-		{
-			orig(self, menu, owner, pos, index);
-			if (keybindWrappers[index] == null)
-			{
-				OpKeyBinder keyBinder = new OpKeyBinder(
-					JollyRebindConfig.PlayerPointInputs[index],
-					pos - new Vector2(10f, 73f),
-					new Vector2(120f, 35f),
-					false
-				);
-				keyBinder.description = $"Click to change Player {index + 1}'s point button";
-				keyBinder.OnValueUpdate += KeybindValueUpdated;
-
-				keybindWrappers[index] = new UIelementWrapper(menu.tabWrapper, keyBinder);
-				Debug.Log($"(JollyRebind) Keybind UI added for player {index + 1}");
-			}
+			KeybindWrappers[0].nextSelectable[0] = KeybindWrappers[KeybindWrappers.Length - 1];
+			KeybindWrappers[KeybindWrappers.Length - 1].nextSelectable[2] = KeybindWrappers[0];
 		}
 
 		// Called by the `OpKeyBinder.OnValueUpdate` event.
@@ -110,15 +127,15 @@ namespace JollyRebind
 		private static void JollyPlayerSelector_UpdateHK(On.JollyCoop.JollyMenu.JollyPlayerSelector.orig_Update orig, JollyPlayerSelector self)
 		{
 			orig(self);
-			keybindWrappers[self.index].ThisConfig.greyedOut = !self.Joined;
+			KeybindWrappers[self.index].ThisConfig.greyedOut = !self.Joined;
 		}
 
 		// Move the custom colour buttons out of the way of the keybinders.
 		private static void JollyPlayerSelector_AddColorButtonHK(On.JollyCoop.JollyMenu.JollyPlayerSelector.orig_AddColorButton orig, JollyPlayerSelector self)
 		{
 			orig(self);
-			self.colorConfig.pos.y -= keybindWrappers[self.index].thisElement.size.y;
-			self.colorConfig.lastPos.y -= keybindWrappers[self.index].thisElement.size.y;
+			self.colorConfig.pos.y -= KeybindWrappers[self.index].thisElement.size.y;
+			self.colorConfig.lastPos.y -= KeybindWrappers[self.index].thisElement.size.y;
 		}
 
 
