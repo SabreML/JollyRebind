@@ -14,12 +14,14 @@ namespace JollyRebind
 	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.2")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
-		// The number of co-op players
+		// The maximum number of co-op players. (Default: 4)
+		// The 'Myriad of Slugcats' mod can increase this up to 16.
 		public static int PlayerCount;
 
 
 		// A `HashSet` of previously logged controller element exceptions.
 		// These are tracked because `JollyInputUpdate` happens once every frame, and this could very quickly spam the log file otherwise.
+		// (`HashSet`s don't allow duplicate entries.)
 		private static readonly HashSet<string> exceptionLogLog = new HashSet<string>();
 
 
@@ -42,16 +44,19 @@ namespace JollyRebind
 		// 'Myriad of Slugcats' compatibility.
 		private void PostInit(On.RainWorld.orig_PostModsInit orig, RainWorld self)
 		{
-			// Always 4 by default, but Myriad can increase it up to 16.
+			// The `PlayerObjectBodyColors` field seems to be the most reliable way to get a max player count.
 			PlayerCount = RainWorld.PlayerObjectBodyColors.Length;
 			if (PlayerCount > 4)
 			{
+				// Remake these arrays with a bigger size.
 				JollyMenuKeybinds.KeybindWrappers = new Menu.Remix.UIelementWrapper[PlayerCount];
 				JollyRebindConfig.PlayerPointInputs = new Configurable<KeyCode>[PlayerCount];
 			}
 
+			// Whether it's modified or not, finish setting up the input configs.
 			JollyRebindConfig.CreateInputConfigs();
 		}
+
 
 		// If the player has a custom keybind set (AKA: Not the map key), this method sets `jollyButtonDown` to true if the key is being held down.
 		private void JollyInputUpdateHK(On.Player.orig_JollyInputUpdate orig, Player self)

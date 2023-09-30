@@ -14,7 +14,7 @@ namespace JollyRebind
 		private static ConfigHolder configHolder;
 
 
-		// Cache `this.config` as a static variable so that I can be a bit lazy with it in `CreateInputConfigs()`.
+		// Cache `this.config` in a static field so that I can be a bit lazy with it in `CreateInputConfigs()`.
 		public JollyRebindConfig()
 		{
 			configHolder = config;

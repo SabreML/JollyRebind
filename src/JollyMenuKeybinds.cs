@@ -13,8 +13,11 @@ namespace JollyRebind
 {
 	public static class JollyMenuKeybinds
 	{
+		// Set to `TRUE` if `JollySetupDialog`'s constructor has finished.
+		// Used by `OpKeyBinder_set_value()`.
 		public static bool MenuReady = false;
 
+		// Array of `UIelementWrapper`s containing each input rebind button.
 		public static UIelementWrapper[] KeybindWrappers = new UIelementWrapper[4];
 
 
@@ -26,6 +29,7 @@ namespace JollyRebind
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.Update += JollyPlayerSelector_UpdateHK;
 			On.JollyCoop.JollyMenu.JollyPlayerSelector.AddColorButton += JollyPlayerSelector_AddColorButtonHK;
 
+			// Manual hook for the `set_value()` method of the `OpKeyBinder.value` property.
 			new ILHook(
 				typeof(OpKeyBinder).GetProperty("value", BindingFlags.Public | BindingFlags.Instance).GetSetMethod(),
 				new ILContext.Manipulator(OpKeyBinder_set_value)
@@ -38,11 +42,13 @@ namespace JollyRebind
 			InitBoundKey();
 			orig(self, name, manager, closeButtonPos);
 
+			// Place all of the rebind buttons.
 			CreateKeyBinders(self.slidingMenu);
 
-			// Skip this step if the player count is modified to avoid any mod compatibility issues.
 			if (KeybindWrappers.Length == 4)
 			{
+				// Edit the order in which buttons are selected by the movement keys to account for the new keybinders.
+				// (Skip this step if the player count is modified to avoid any mod compatibility issues.)
 				FixSelectableOrder(self.slidingMenu);
 			}
 
@@ -57,6 +63,7 @@ namespace JollyRebind
 			{
 				if (KeybindWrappers[i] != null)
 				{
+					// Save each keybinder to file and remove them.
 					KeybindWrappers[i].SaveConfig();
 					KeybindWrappers[i] = null;
 				}
@@ -72,28 +79,34 @@ namespace JollyRebind
 			{
 				JollyPlayerSelector playerSelector = self.playerSelector[i];
 
-				if (KeybindWrappers[i] == null)
+				if (KeybindWrappers[i] != null)
 				{
-					OpKeyBinder keyBinder = new OpKeyBinder(
-						JollyRebindConfig.PlayerPointInputs[i],
-						playerSelector.pos - new Vector2(10f, 73f),
-						new Vector2(120f, 35f),
-						false
-					);
-					keyBinder.description = $"Click to change Player {i + 1}'s point button";
-					keyBinder.OnValueUpdate += KeybindValueUpdated;
-
-					// If a mod (specifically 'Myriad of Slugcats') has increased the number of players above a certain amount, then the keybinders need to be smaller.
-					if (KeybindWrappers.Length >= 12)
-					{
-						keyBinder.size *= 0.56f;
-						keyBinder._label.scale *= 0.5f;
-						keyBinder._sprite.scale *= 0.5f;
-					}
-
-					KeybindWrappers[i] = new UIelementWrapper(self.menu.tabWrapper, keyBinder);
-					Debug.Log($"(JollyRebind) Keybind UI added for player {i + 1}");
+					// If there's already a keybinder for this index, continue.
+					// (AFAIK this should be impossible, but presumably I added this here for a reason and it's not hurting anything so :shrug:.)
+					continue;
 				}
+
+				OpKeyBinder keyBinder = new OpKeyBinder(
+					JollyRebindConfig.PlayerPointInputs[i],
+					playerSelector.pos - new Vector2(10f, 73f),
+					new Vector2(120f, 35f),
+					false
+				);
+				keyBinder.description = $"Click to change Player {i + 1}'s point button";
+				keyBinder.OnValueUpdate += KeybindValueUpdated;
+
+				// If a mod (specifically 'Myriad of Slugcats') has increased the number of players above a certain amount, then the keybinders need to be smaller.
+				if (KeybindWrappers.Length >= 12)
+				{
+					keyBinder.size *= 0.56f;
+					keyBinder._label.scale *= 0.5f;
+					keyBinder._sprite.scale *= 0.5f;
+					// Also shift them over a bit.
+					keyBinder.pos += new Vector2(18f, 5f);
+				}
+
+				KeybindWrappers[i] = new UIelementWrapper(self.menu.tabWrapper, keyBinder);
+				Debug.Log($"(JollyRebind) Keybind UI added for player {i + 1}");
 			}
 		}
 
@@ -110,6 +123,7 @@ namespace JollyRebind
 			KeybindWrappers[0].nextSelectable[0] = KeybindWrappers[KeybindWrappers.Length - 1];
 			KeybindWrappers[KeybindWrappers.Length - 1].nextSelectable[2] = KeybindWrappers[0];
 		}
+
 
 		// Called by the `OpKeyBinder.OnValueUpdate` event.
 		// This is used to block setting the button to 'none' when the escape key is pressed.
@@ -140,7 +154,7 @@ namespace JollyRebind
 
 
 		// Adds a check to the setter of `OpKeyBinder.value` to stop it from playing a sound before the menu is fully loaded.
-		// This is needed because otherwise all four keybind buttons will try to play a sound at the same time when the menu opens, resulting in a loud noise.
+		// This is needed because otherwise all of the keybind buttons will try to play a sound at the same time when the menu opens, resulting in a loud noise.
 		private static void OpKeyBinder_set_value(ILContext il)
 		{
 			ILCursor cursor = new ILCursor(il);
