@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.2")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.21")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		// The maximum number of co-op players. (Default: 4)
@@ -44,6 +44,7 @@ namespace JollyRebind
 		// 'Myriad of Slugcats' compatibility.
 		private void PostInit(On.RainWorld.orig_PostModsInit orig, RainWorld self)
 		{
+			orig(self);
 			// The `PlayerObjectBodyColors` field seems to be the most reliable way to get a max player count.
 			PlayerCount = RainWorld.PlayerObjectBodyColors.Length;
 			if (PlayerCount > 4)
