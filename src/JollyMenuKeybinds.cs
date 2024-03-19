@@ -127,6 +127,7 @@ namespace JollyRebind
 
 		// Called by the `OpKeyBinder.OnValueUpdate` event.
 		// This is used to block setting the button to 'none' when the escape key is pressed.
+		// (Pressing Esc closes the whole menu, so allowing it as a keybind would be confusing.)
 		private static void KeybindValueUpdated(UIconfig config, string newValue, string oldValue)
 		{
 			// If the value been has changed to 'none'.

@@ -11,12 +11,12 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.21")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.3")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
 		// The maximum number of co-op players. (Default: 4)
 		// The 'Myriad of Slugcats' mod can increase this up to 16.
-		public static int PlayerCount;
+		public static int MaxPlayerCount { private set; get; }
 
 
 		// A `HashSet` of previously logged controller element exceptions.
@@ -46,12 +46,12 @@ namespace JollyRebind
 		{
 			orig(self);
 			// The `PlayerObjectBodyColors` field seems to be the most reliable way to get a max player count.
-			PlayerCount = RainWorld.PlayerObjectBodyColors.Length;
-			if (PlayerCount > 4)
+			MaxPlayerCount = RainWorld.PlayerObjectBodyColors.Length;
+			if (MaxPlayerCount > 4)
 			{
 				// Remake these arrays with a bigger size.
-				JollyMenuKeybinds.KeybindWrappers = new Menu.Remix.UIelementWrapper[PlayerCount];
-				JollyRebindConfig.PlayerPointInputs = new Configurable<KeyCode>[PlayerCount];
+				JollyMenuKeybinds.KeybindWrappers = new Menu.Remix.UIelementWrapper[MaxPlayerCount];
+				JollyRebindConfig.PlayerPointInputs = new Configurable<KeyCode>[MaxPlayerCount];
 			}
 
 			// Whether it's modified or not, finish setting up the input configs.
@@ -128,7 +128,7 @@ namespace JollyRebind
 
 		// A 2D dictionary containing Rewired `elementIdentifierName`s to their corresponding Unity `KeyCode`s,
 		// categorised by the controller preset they belong to.
-		// (Button names taken from the Rewired 'RewiredControllerElementIdentifiers.csv' file from the Rewired documentation)
+		// (Button names taken from the 'RewiredControllerElementIdentifiers.csv' file from the Rewired documentation)
 		private static readonly Dictionary<Options.ControlSetup.Preset, Dictionary<string, KeyCode>> rewiredNameToKeyCode =
 			new Dictionary<Options.ControlSetup.Preset, Dictionary<string, KeyCode>>
 		{
@@ -185,6 +185,6 @@ namespace JollyRebind
 				{ "Right Stick",		KeyCode.JoystickButton9 }
 			}
 		};
-		// (Having all of these hardcoded in the mod is terrible, but this is genuinely the best way I've been able to find after over a week of testing.)
+		// (Having all of these hardcoded in the mod is pretty awful, but this is genuinely the best way I've been able to find after over a week.)
 	}
 }
