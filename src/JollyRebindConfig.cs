@@ -11,24 +11,15 @@ namespace JollyRebind
 	{
 		public static Configurable<KeyCode>[] PlayerPointInputs = new Configurable<KeyCode>[4];
 
-		private static ConfigHolder configHolder;
-
 
 		// Cache `this.config` in a static field so that I can be a bit lazy with it in `CreateInputConfigs()`.
 		public JollyRebindConfig()
 		{
-			configHolder = config;
-		}
-
-		// Bind each player's `Configurable<KeyCode>` to the `ConfigHolder`, with Spacebar as the default key.
-		public static void CreateInputConfigs()
-		{
 			for (int i = 0; i < PlayerPointInputs.Length; i++)
 			{
-				PlayerPointInputs[i] = configHolder.Bind($"PlayerPointInputP{i}", KeyCode.Space);
+				PlayerPointInputs[i] = config.Bind($"PlayerPointInputP{i}", KeyCode.Space);
 			}
 		}
-
 
 		// Hook and override these methods to manually stop this interface being opened.
 		// This is needed because there aren't actually any configurable settings, and it'll be confusing to see a blank config page.

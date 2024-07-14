@@ -11,14 +11,9 @@ using UnityEngine;
 
 namespace JollyRebind
 {
-	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.3")]
+	[BepInPlugin("sabreml.jollyrebind", "JollyRebind", "1.2.4")]
 	public class JollyRebindMod : BaseUnityPlugin
 	{
-		// The maximum number of co-op players. (Default: 4)
-		// The 'Myriad of Slugcats' mod can increase this up to 16.
-		public static int MaxPlayerCount { private set; get; }
-
-
 		// A `HashSet` of previously logged controller element exceptions.
 		// These are tracked because `JollyInputUpdate` happens once every frame, and this could very quickly spam the log file otherwise.
 		// (`HashSet`s don't allow duplicate entries.)
@@ -41,23 +36,26 @@ namespace JollyRebind
 			MachineConnector.SetRegisteredOI(Info.Metadata.GUID, new JollyRebindConfig());
 		}
 
-		// 'Myriad of Slugcats' compatibility.
+		// Just for compatibility with the 'Myriad of Slugcats' mod.
 		private void PostInit(On.RainWorld.orig_PostModsInit orig, RainWorld self)
 		{
 			orig(self);
+
 			// The `PlayerObjectBodyColors` field seems to be the most reliable way to get a max player count.
-			MaxPlayerCount = RainWorld.PlayerObjectBodyColors.Length;
+			int MaxPlayerCount = RainWorld.PlayerObjectBodyColors.Length;
 			if (MaxPlayerCount > 4)
 			{
 				// Remake these arrays with a bigger size.
 				JollyMenuKeybinds.KeybindWrappers = new Menu.Remix.UIelementWrapper[MaxPlayerCount];
 				JollyRebindConfig.PlayerPointInputs = new Configurable<KeyCode>[MaxPlayerCount];
+
+				// Re-register the mod's config with the new array size.
+				JollyRebindConfig modConfig = new JollyRebindConfig();
+				MachineConnector.SetRegisteredOI(Info.Metadata.GUID, modConfig);
+				// And reload any saved values from file into it.
+				modConfig.config.Reload();
 			}
-
-			// Whether it's modified or not, finish setting up the input configs.
-			JollyRebindConfig.CreateInputConfigs();
 		}
-
 
 		// If the player has a custom keybind set (AKA: Not the map key), this method sets `jollyButtonDown` to true if the key is being held down.
 		private void JollyInputUpdateHK(On.Player.orig_JollyInputUpdate orig, Player self)
